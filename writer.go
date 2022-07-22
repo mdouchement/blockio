@@ -55,7 +55,7 @@ func NewWriter16(w io.Writer) io.Writer {
 func NewWriter32(w io.Writer) io.Writer {
 	w32 := &writer{
 		dst: w,
-		buf: make([]byte, MaxBlock32+2),
+		buf: make([]byte, MaxBlock32+4),
 	}
 	w32.wsize = func(l int) (int, error) {
 		if l > MaxBlock32 {
