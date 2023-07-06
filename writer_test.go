@@ -57,7 +57,7 @@ func TestWriter8_Write(t *testing.T) {
 
 	data = bytes.Repeat([]byte{'b'}, blockio.MaxBlock8+1)
 	n, err = w.Write(data)
-	assert.ErrorAs(t, err, &blockio.ErrBlockSize)
+	assert.ErrorIs(t, err, blockio.ErrBlockSize)
 	assert.Equal(t, 0, n)
 }
 
@@ -114,7 +114,66 @@ func TestWriter16_Write(t *testing.T) {
 
 	data = bytes.Repeat([]byte{'b'}, blockio.MaxBlock16+1)
 	n, err = w.Write(data)
-	assert.ErrorAs(t, err, &blockio.ErrBlockSize)
+	assert.ErrorIs(t, err, blockio.ErrBlockSize)
+	assert.Equal(t, 0, n)
+}
+
+func TestWriter24_Write(t *testing.T) {
+	var buf bytes.Buffer
+	w := blockio.NewWriter24(&buf)
+
+	bufw := make([]byte, blockio.MaxBlock24+3)
+
+	//
+	// Write `data`
+
+	data := []byte("data")
+	n, err := w.Write(data)
+	assert.NoError(t, err)
+
+	ld := len(data)
+	assert.Equal(t, ld+3, n)
+
+	binary.BigEndian.PutUint32(bufw[:4], uint32(ld))
+	bufw[0], bufw[1], bufw[2] = bufw[1], bufw[2], bufw[3]
+	copy(bufw[3:], data)
+	expected := bufw[:ld+3]
+	assert.Equal(t, expected, buf.Bytes())
+
+	//
+	// Append another `data` to buffer
+
+	n, err = w.Write(data)
+	assert.NoError(t, err)
+
+	assert.Equal(t, ld+3, n)
+
+	expected = append(expected, expected...)
+	assert.Equal(t, expected, buf.Bytes())
+
+	//
+	// Just before block size limit
+
+	buf.Reset()
+
+	data = bytes.Repeat([]byte{'b'}, blockio.MaxBlock24)
+	n, err = w.Write(data)
+	assert.NoError(t, err)
+
+	ld = len(data)
+	assert.Equal(t, ld+3, n)
+
+	binary.BigEndian.PutUint32(bufw[:4], uint32(ld))
+	bufw[0], bufw[1], bufw[2] = bufw[1], bufw[2], bufw[3]
+	copy(bufw[3:], data)
+	assert.Equal(t, bufw[:ld+3], buf.Bytes())
+
+	//
+	// Block out of limit
+
+	data = bytes.Repeat([]byte{'b'}, blockio.MaxBlock24+1)
+	n, err = w.Write(data)
+	assert.ErrorIs(t, err, blockio.ErrBlockSize)
 	assert.Equal(t, 0, n)
 }
 
@@ -171,6 +230,6 @@ func TestWriter32_Write(t *testing.T) {
 
 	// data = bytes.Repeat([]byte{'b'}, blockio.MaxBlock32+1)
 	// n, err = w.Write(data)
-	// assert.ErrorAs(t, err, &blockio.ErrBlockSize)
+	// assert.ErrorIs(t, err, blockio.ErrBlockSize)
 	// assert.Equal(t, 0, n)
 }
