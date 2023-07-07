@@ -10,11 +10,16 @@ import (
 const (
 	MaxBlock8  = 0xFF
 	MaxBlock16 = 0xFFFF
+	MaxBlock24 = 0xFFFFFF
 	MaxBlock32 = 0xFFFFFFFF
 )
 
-// ErrBlockSizeTooSmall is returned when the block size too small for a reader.
-var ErrBlockSizeTooSmall = errors.New("block size too small for the reader")
+var (
+	// ErrBlockSizeTooSmall is returned when the block size too small for a reader.
+	ErrBlockSizeTooSmall = errors.New("block size too small for the reader")
+	// ErrSizeTooLarge is returned when the given size exceed the block size used by a reader.
+	ErrSizeTooLarge = errors.New("size too large for the block reader")
+)
 
 type reader struct {
 	src   io.Reader
@@ -62,6 +67,50 @@ func NewReader16(r io.Reader) io.Reader {
 	return r16
 }
 
+// NewReader24 returns a new reader that is able to read blocks of size MaxBlock24.
+func NewReader24(r io.Reader) io.Reader {
+	r24 := &reader{
+		src:  r,
+		size: MaxBlock24,
+	}
+	buf := make([]byte, 4)
+
+	r24.rsize = func() (int, error) {
+		_, err := r24.src.Read(buf[1:]) // 3 bytes because we work on 24bit. We let to zero the fourth byte at index 0 for binary.BigEndian.Uint32's behavior.
+		if err != nil {
+			return 0, err
+		}
+
+		return int(binary.BigEndian.Uint32(buf)), nil
+	}
+
+	return r24
+}
+
+// NewReader24Custom returns a new reader that is able to read blocks up to size MaxBlock24.
+func NewReader24Custom(r io.Reader, size int) (io.Reader, error) {
+	if size > MaxBlock24 {
+		return nil, ErrSizeTooLarge
+	}
+
+	r24c := &reader{
+		src:  r,
+		size: size,
+	}
+	buf := make([]byte, 4)
+
+	r24c.rsize = func() (int, error) {
+		_, err := r24c.src.Read(buf[1:]) // 3 bytes because we work on 24bit. We let to zero the fourth byte at index 0 for binary.BigEndian.Uint32's behavior.
+		if err != nil {
+			return 0, err
+		}
+
+		return int(binary.BigEndian.Uint32(buf)), nil
+	}
+
+	return r24c, nil
+}
+
 // NewReader32 returns a new reader that is able to read blocks of size MaxBlock32.
 func NewReader32(r io.Reader) io.Reader {
 	r32 := &reader{
@@ -80,6 +129,30 @@ func NewReader32(r io.Reader) io.Reader {
 	}
 
 	return r32
+}
+
+// NewReader32Custom returns a new reader that is able to read blocks up to size MaxBlock32.
+func NewReader32Custom(r io.Reader, size int) (io.Reader, error) {
+	if size > MaxBlock32 {
+		return nil, ErrSizeTooLarge
+	}
+
+	r32c := &reader{
+		src:  r,
+		size: size,
+	}
+	buf := make([]byte, 4)
+
+	r32c.rsize = func() (int, error) {
+		_, err := r32c.src.Read(buf)
+		if err != nil {
+			return 0, err
+		}
+
+		return int(binary.BigEndian.Uint32(buf)), nil
+	}
+
+	return r32c, nil
 }
 
 func (r *reader) Read(p []byte) (n int, err error) {

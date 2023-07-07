@@ -7,6 +7,8 @@
 
 BlockIO is a simple package to write and read a file as binary blocks. It's the same idea as putting several JSON objects line per line in a plaintext file.
 
+**This package is not threadsafe.**
+
 ## Format
 
 ```
@@ -14,9 +16,10 @@ BlockIO is a simple package to write and read a file as binary blocks. It's the 
 ```
 
 Possible `block_size` values:
-- Block8 coded on 1 byte for maximum 255-bytes block length
-- Block16 coded on 2 bytes for maximum 65535-bytes block length
-- Block32 coded on 4 bytes for maximum 4294967295-bytes block length (take care your memory usage ;)
+- Block8 coded on 1 byte for maximum 255-byte block length
+- Block16 coded on 2 bytes for maximum 65535-byte block length
+- Block24 coded on 3 bytes for maximum 16777215-byte block length
+- Block32 coded on 4 bytes for maximum 4294967295-byte block length (take care your memory usage ;)
 
 ## Usage
 

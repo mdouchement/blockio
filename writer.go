@@ -15,7 +15,7 @@ type writer struct {
 	wsize func(l int) (int, error)
 }
 
-// NewWriter8 returns a new writer that is able to write blocks of size MaxBlock8.
+// NewWriter8 returns a new writer that is able to write blocks of size up to MaxBlock8.
 func NewWriter8(w io.Writer) io.Writer {
 	w8 := &writer{
 		dst: w,
@@ -33,7 +33,7 @@ func NewWriter8(w io.Writer) io.Writer {
 	return w8
 }
 
-// NewWriter16 returns a new writer that is able to write blocks of size MaxBlock16.
+// NewWriter16 returns a new writer that is able to write blocks of size up to MaxBlock16.
 func NewWriter16(w io.Writer) io.Writer {
 	w16 := &writer{
 		dst: w,
@@ -51,7 +51,26 @@ func NewWriter16(w io.Writer) io.Writer {
 	return w16
 }
 
-// NewWriter32 returns a new writer that is able to write blocks of size MaxBlock32.
+// NewWriter24 returns a new writer that is able to write blocks of size up to MaxBlock24.
+func NewWriter24(w io.Writer) io.Writer {
+	w24 := &writer{
+		dst: w,
+		buf: make([]byte, MaxBlock24+3),
+	}
+	w24.wsize = func(l int) (int, error) {
+		if l > MaxBlock24 {
+			return 0, ErrBlockSize
+		}
+
+		binary.BigEndian.PutUint32(w24.buf[:4], uint32(l))
+		w24.buf[0], w24.buf[1], w24.buf[2] = w24.buf[1], w24.buf[2], w24.buf[3] // Translate over 3 bytes because we work on 24bit.
+		return 3, nil
+	}
+
+	return w24
+}
+
+// NewWriter32 returns a new writer that is able to write blocks of size up to MaxBlock32.
 func NewWriter32(w io.Writer) io.Writer {
 	w32 := &writer{
 		dst: w,
